@@ -1,172 +1,197 @@
+
 /*
  * Copyright © 2008-2014 Stéphane Raimbault <stephane.raimbault@gmail.com>
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+
 /*
-	Used on Raspeberry Pi, as a slave to receive the indication from HMI. 
-	At same time, it has the ability to read or write the register on HMI.
-	Use TCP/IP to connect with the HMI
+    Used on Raspeberry Pi, as a master to write or read the register/coils of HMI. 
+    Use TCP/IP to connect with HMI.
 */
+
 #include <stdio.h>
 #include <unistd.h>
+
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <signal.h>
 
 #include <modbus/modbus.h>
 
-#include <sys/select.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 
-using namespace std;
+/* Register of HMI(for Raspi to read), saving current status of different parameters */
+#define ADDR_AXIS_ONE_POS            0       //FLAOT
+#define ADDR_AXIS_TWO_POS            2       //FLAOT
+#define ADDR_AXIS_THREE_POS          4       //FLAOT
+#define ADDR_AXIS_FOUR_POS           6       //FLAOT
+#define ADDR_CLAW_MATERIALS_STATUS   8       //Us 1-Clamp 0-Loose      
+#define ADDR_CLAW_PRODUCTS_STATUS    9       //Us 1-Clamp 0-Loose      
+#define ADDR_POSITIONING_FLAG        10      //Us 1-Positioning 0-Normal status
+#define ADDR_IDENTIFYING_FLAG        11      //Us 1-Enable identifying module 0-Unable
 
-#define NB_CONNECTION    5
-static modbus_t *ctx = NULL;
-static modbus_mapping_t *mb_mapping;
-static int server_socket = -1;	
+/* Register of HMI(for Raspi to write) */
+#define ADDR_AXIS_ONE_DST_POS       100     //FLAOT
+#define ADDR_AXIS_TWO_DST_POS       102     //FLAOT
+#define ADDR_AXIS_THREE_DST_POS     104     //FLAOT
+#define ADDR_AXIS_FOUR_DST_POS      106     //FLAOT
+#define ADDR_BEGIN_POSITIONING       108     //US 0->1 begin positioning
+#define ADDR_CAMERA_ROTATE           109     //US 0-Up 1-Down
+#define ADDR_CLAW_MATERIALS_CONTROL  110     //US 0-Keep 1-Loose
+#define ADDR_CLAW_PRODUCT_CONTROL    111     //US 0-Keep 1-Loose
+#define ADDR_FINISH_IDENTIFYING      112     //US 0-Identifying 1-Finished 2-Failed
 
-#include <modbus/modbus.h>
-
-static void close_sigint(int dummy)
+enum AXIS_NUM
 {
-	
-    if (server_socket != -1) {
-        close(server_socket);
-    }
-    modbus_free(ctx);
-    modbus_mapping_free(mb_mapping);
+    AXIS_ONE,
+    AXIS_TWO,
+    AXIS_THREE,
+    AXIS_FOUR
+};
 
-    exit(dummy);
+/* Parameters for initialization */
+#define SLAVE_ID            6
+static modbus_t* ctx = NULL;
+
+/* Registers of 4 axis, each register contain 4 bytes */
+static uint16_t *axis_one_pos   = (uint16_t *)malloc(2*sizeof(uint16_t));
+static uint16_t *axis_two_pos   = (uint16_t *)malloc(2*sizeof(uint16_t));
+static uint16_t *axis_three_pos = (uint16_t *)malloc(2*sizeof(uint16_t));
+static uint16_t *axis_four_pos  = (uint16_t *)malloc(2*sizeof(uint16_t));
+
+static uint16_t *axis_one_dst_pos   = (uint16_t *)malloc(2*sizeof(uint16_t));
+static uint16_t *axis_two_dst_pos   = (uint16_t *)malloc(2*sizeof(uint16_t));
+static uint16_t *axis_three_dst_pos = (uint16_t *)malloc(2*sizeof(uint16_t));
+static uint16_t *axis_four_dst_pos  = (uint16_t *)malloc(2*sizeof(uint16_t));
+
+int initModbusTCP()
+{
+    // ctx = modbus_new_tcp("192.168.123.156", 502);           //Connect to windows
+    ctx = modbus_new_tcp("192.168.142.129", 502);           //Connect to Ubuntu
+    modbus_set_debug(ctx, TRUE);
+    modbus_set_slave(ctx, SLAVE_ID);       //If slave use slave ID, then there need to set too
+
+    if(modbus_connect(ctx) == -1)
+    {
+        fprintf(stderr, "Coneection failed: %s\n", modbus_strerror(errno));
+        modbus_free(ctx);
+        return -1;
+    }
+
+    int nb = 2;
+
+    memset(axis_one_pos, 0, nb*sizeof(uint16_t));
+    memset(axis_two_pos, 0, nb*sizeof(uint16_t));
+    memset(axis_three_pos, 0, nb*sizeof(uint16_t));
+    memset(axis_four_pos, 0, nb*sizeof(uint16_t));
+
+    memset(axis_one_dst_pos, 0, nb*sizeof(uint16_t));
+    memset(axis_two_dst_pos, 0, nb*sizeof(uint16_t));
+    memset(axis_three_dst_pos, 0, nb*sizeof(uint16_t));
+    memset(axis_four_dst_pos, 0, nb*sizeof(uint16_t));
+
+    return 0;
+}
+
+int readAxisPos(int &axisnum, float &f_axispos)
+{
+    int rc;
+    uint16_t addr = 0;
+    uint16_t *p_axispos = (uint16_t *)malloc(2*sizeof(uint16_t));
+    int nb = 2;
+    switch(axisnum)
+    {
+        case AXIS_ONE:  
+            addr = ADDR_AXIS_ONE_POS;   
+            p_axispos = axis_one_pos;    
+            break;
+        case AXIS_TWO:  
+            addr = ADDR_AXIS_TWO_POS;
+            p_axispos = axis_two_pos;   
+            break;
+        case AXIS_THREE:
+            addr = ADDR_AXIS_THREE_POS;
+            p_axispos = axis_three_pos;   
+            break;
+        case AXIS_FOUR: 
+            addr = ADDR_AXIS_FOUR_POS;
+            p_axispos = axis_four_pos;   
+            break;
+    }
+
+    rc = modbus_read_registers(ctx, addr, nb, p_axispos);
+    if (rc != nb) 
+    {
+        printf("ERROR modbus_read_registers single (%d)\n", rc);
+        printf("Address = %d\n", addr);
+        return -1;
+    }
+    f_axispos = modbus_get_float_abcd(p_axispos);
+    return 0;
+}
+
+int writeAxisPos(int &axisnum, float &f_axispos)
+{
+    int rc;
+    uint16_t addr = 0;
+    uint16_t *p_axisdstpos = (uint16_t *)malloc(2*sizeof(uint16_t));
+    int nb = 2;
+    switch(axisnum)
+    {
+        case AXIS_ONE:  
+            addr = ADDR_AXIS_ONE_DST_POS;   
+            p_axisdstpos = axis_one_dst_pos;    
+            break;
+        case AXIS_TWO:  
+            addr = ADDR_AXIS_TWO_DST_POS;
+            p_axisdstpos = axis_two_dst_pos;   
+            break;
+        case AXIS_THREE:
+            addr = ADDR_AXIS_THREE_DST_POS;
+            p_axisdstpos = axis_three_dst_pos;   
+            break;
+        case AXIS_FOUR: 
+            addr = ADDR_AXIS_FOUR_DST_POS;
+            p_axisdstpos = axis_four_dst_pos;   
+            break;
+    }
+
+    modbus_set_float_abcd(f_axispos, p_axisdstpos);
+
+    rc = modbus_write_registers(ctx, addr, nb, p_axisdstpos);
+    if (rc != nb) {
+        printf("ERROR modbus_write_registers (%d)\n", rc);
+        printf("Address = %d, nb = %d\n", addr, nb);
+        return -1;
+    }
+    return 0;
 }
 
 int main()
 {
-	uint8_t query[MODBUS_TCP_MAX_ADU_LENGTH];
-    int 	master_socket;
-    int 	rc;
-    fd_set 	refset;
-    fd_set 	rdset;
+    initModbusTCP();
 
-    /* Maximum file descriptor number */
-    int 	fdmax;
+    /* Test write modbus */
+    float dstpos = 18.0;
+    int axisnum = AXIS_ONE;
+    int rc;
 
-    int     sykdebugnb = 0;
+    writeAxisPos(axisnum, dstpos);
 
-    ctx = modbus_new_tcp("192.168.142.129", 502);
 
-    /*sykfix: modbus_mapping_new should give rasp pi write bits and write register*/
-    mb_mapping = modbus_mapping_new(MODBUS_MAX_READ_BITS, 0,
-                                    MODBUS_MAX_READ_REGISTERS, 0);
+    /*Get the result*/
+    printf("Test: ");       
+    if (nb_fail)
+        printf("%d FAILS\n", nb_fail);
+    else
+        printf("SUCCESS\n");
 
-    if (mb_mapping == NULL) {
-        fprintf(stderr, "Failed to allocate the mapping: %s\n",
-                modbus_strerror(errno));
-        modbus_free(ctx);
-        return -1;
-    }
+    /*Free the memory*/
+    free(axis_one_register);
+    free(axis_one_reply_register);
 
-    server_socket = modbus_tcp_listen(ctx, NB_CONNECTION);
-    if (server_socket == -1) {
-        fprintf(stderr, "Unable to listen TCP connection\n");
-        modbus_free(ctx);
-        return -1;
-    }
-
-    signal(SIGINT, close_sigint);		//InterruptKey to close the signal
-
-        /* Clear the reference set of socket */
-    FD_ZERO(&refset);
-    /* Add the server socket */
-    FD_SET(server_socket, &refset);
-
-    /* Keep track of the max file descriptor */
-    fdmax = server_socket;
-
-    for(;;)
-    {
-    	rdset = refset;
-    	/*sykfix: need to add write fdset. And noticed the select function is run by blocked*/
-    	if(select(fdmax+1, &rdset, NULL, NULL, NULL) == -1)
-    	{
-    		perror("Server select() failure.");
-    		close_sigint(1);
-    	}
-
-    	/* Run through the existing connections looking for data to be
-         * read */
-    	for(master_socket = 0; master_socket <= fdmax; master_socket++)
-    	{
-    		if(!FD_ISSET(master_socket, &rdset))
-    		{
-    			continue;
-    		}
-
-    		if(master_socket == server_socket)
-    		{
-    			/*a socket client is asking a new connection here?*/
-    			socklen_t addrlen;
-    			struct sockaddr_in clientaddr;
-    			int newfd;
-
-    			/*Handle new connections*/
-    			addrlen = sizeof(clientaddr);
-    			memset(&clientaddr, 0, sizeof(clientaddr));
-    			newfd = accept(server_socket, (struct sockaddr*)&clientaddr, &addrlen);
-
-    			if(newfd == -1)
-    			{
-    				perror("Server accept() error");
-       			}
-       			else
-       			{
-       				FD_SET(newfd, &refset);
-       				if(newfd > fdmax)
-       				{
-       					/*Keep track of the maximum of socket*/
-       					fdmax = newfd;
-       				}
-       				printf("New connection from %s:%d on socket %d\n",
-       					inet_ntoa(clientaddr.sin_addr), clientaddr.sin_port, newfd);
-       			}
-    		}
-    		else
-    		{
-    			modbus_set_socket(ctx, master_socket);
-    			rc = modbus_receive(ctx, query);
-    			if(rc > 0)
-    			{
-    				modbus_reply(ctx, query, rc, mb_mapping);
-                    sykdebugnb++;
-                    printf("sykdebugnb = %d\n\r", sykdebugnb);
-    			}
-    			else if(rc == -1)
-    			{
-    				/* This example server in ended on connection closing or
-                     * any errors. */
-                    printf("Connection closed on socket %d\n", master_socket);
-                    close(master_socket);
-
-                    /* Remove from reference set */
-                    FD_CLR(master_socket, &refset);
-
-                    if (master_socket == fdmax)
-                        fdmax--;
-    			}
-                if(sykdebugnb == 2)
-                {
-                    printf("sykdebug: begin to read\n");
-                    uint16_t *axis_one_reply_register = (uint16_t *)malloc(sizeof(uint16_t));
-                    memset(axis_one_reply_register, 0, sizeof(uint16_t));
-                    rc = modbus_read_registers(ctx, 20, 1, axis_one_reply_register);
-                    printf("Address = %d, value = %d\n", 1, axis_one_reply_register[0]);
-                }
-    		}
-    	}
-    }
+    modbus_close(ctx);
+    modbus_free(ctx);
 
 }
