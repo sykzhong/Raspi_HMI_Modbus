@@ -23,7 +23,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-using namespace std;
+// using namespace std;
 
 #define NB_CONNECTION       5
 #define SLAVE_ID            6
@@ -56,7 +56,6 @@ int main()
     /* Maximum file descriptor number */
     int 	fdmax;
 
-    int     sykdebugnb = 0;
 
     ctx = modbus_new_tcp("192.168.142.129", 502);
 
@@ -144,8 +143,6 @@ int main()
     			if(rc > 0)
     			{
     				modbus_reply(ctx, query, rc, mb_mapping);
-                    sykdebugnb++;
-                    printf("sykdebugnb = %d\n\r", sykdebugnb);
     			}
     			else if(rc == -1)
     			{
@@ -160,14 +157,6 @@ int main()
                     if (master_socket == fdmax)
                         fdmax--;
     			}
-                if(sykdebugnb == 2)
-                {
-                    printf("sykdebug: begin to read\n");
-                    uint16_t *axis_one_reply_register = (uint16_t *)malloc(sizeof(uint16_t));
-                    memset(axis_one_reply_register, 0, sizeof(uint16_t));
-                    rc = modbus_read_registers(ctx, 20, 1, axis_one_reply_register);
-                    printf("Address = %d, value = %d\n", 1, axis_one_reply_register[0]);
-                }
     		}
     	}
     }
