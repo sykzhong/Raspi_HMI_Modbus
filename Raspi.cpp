@@ -32,10 +32,10 @@
 #define ADDR_IDENTIFYING_FLAG        11      //Us 1-Enable identifying module 0-Unable
 
 /* Register of HMI(for Raspi to write) */
-#define ADDR_AXIS_ONE_DST_POS       100     //FLAOT
-#define ADDR_AXIS_TWO_DST_POS       102     //FLAOT
-#define ADDR_AXIS_THREE_DST_POS     104     //FLAOT
-#define ADDR_AXIS_FOUR_DST_POS      106     //FLAOT
+#define ADDR_AXIS_ONE_DST_POS        100     //FLAOT
+#define ADDR_AXIS_TWO_DST_POS        102     //FLAOT
+#define ADDR_AXIS_THREE_DST_POS      104     //FLAOT
+#define ADDR_AXIS_FOUR_DST_POS       106     //FLAOT
 #define ADDR_BEGIN_POSITIONING       108     //US 0->1 begin positioning
 #define ADDR_CAMERA_ROTATE           109     //US 0-Up 1-Down
 #define ADDR_CLAW_MATERIALS_CONTROL  110     //US 0-Keep 1-Loose
@@ -94,7 +94,7 @@ int initModbusTCP()
     return 0;
 }
 
-int readAxisPos(int &axisnum, float &f_axispos)
+int readAxisPos(const int &axisnum, float &f_axispos)
 {
     int rc;
     uint16_t addr = 0;
@@ -118,6 +118,13 @@ int readAxisPos(int &axisnum, float &f_axispos)
             addr = ADDR_AXIS_FOUR_POS;
             p_axispos = axis_four_pos;   
             break;
+        default:    
+        /*sykdebug: for confirm the write function*/
+            // addr = ADDR_AXIS_ONE_DST_POS;
+            // p_axispos = axis_one_dst_pos;
+            // break;
+            printf("axisnum input is wrong\n");
+            return -1;
     }
 
     rc = modbus_read_registers(ctx, addr, nb, p_axispos);
@@ -128,10 +135,12 @@ int readAxisPos(int &axisnum, float &f_axispos)
         return -1;
     }
     f_axispos = modbus_get_float_abcd(p_axispos);
+    printf("sykdebug: f_axispos = %f", f_axispos);
+
     return 0;
 }
 
-int writeAxisPos(int &axisnum, float &f_axispos)
+int writeAxisPos(const int &axisnum, float &f_axispos)
 {
     int rc;
     uint16_t addr = 0;
@@ -155,18 +164,69 @@ int writeAxisPos(int &axisnum, float &f_axispos)
             addr = ADDR_AXIS_FOUR_DST_POS;
             p_axisdstpos = axis_four_dst_pos;   
             break;
+        default:    
+            printf("axisnum input is wrong\n");
+            return -1;
     }
 
     modbus_set_float_abcd(f_axispos, p_axisdstpos);
 
     rc = modbus_write_registers(ctx, addr, nb, p_axisdstpos);
-    if (rc != nb) {
+    if (rc != nb) 
+    {
         printf("ERROR modbus_write_registers (%d)\n", rc);
         printf("Address = %d, nb = %d\n", addr, nb);
         return -1;
     }
     return 0;
 }
+
+int enablePositioning()
+{
+    int rc;
+    uint16_t addr = ADDR_BEGIN_POSITIONING;
+    const int down =  0;
+    const int up = 1;
+    rc = modbus_write_bit(ctx, addr, down);
+    if(rc != 1)
+    {
+        printf("ERROR modbus_write_bit (%d)\n", rc);
+        printf("Address = %d, value = %d\n", addr, down);
+        return -1;
+    }
+    usleep(50);
+    rc = modbus_write_bit(ctx, addr, up);
+    if(rc != 1)
+    {
+        printf("ERROR modbus_write_bit (%d)\n", rc);
+        printf("Address = %d, value = %d\n", addr, up);
+        return -1;
+    }
+    usleep(50);
+    rc = modbus_write_bit(ctx, addr, down);
+    if(rc != 1)
+    {
+        printf("ERROR modbus_write_bit (%d)\n", rc);
+        printf("Address = %d, value = %d\n", addr, down);
+        return -1;
+    }
+}
+
+int closeModbusTCP()
+{
+    free(axis_one_pos);
+    free(axis_two_pos);
+    free(axis_three_pos);
+    free(axis_four_pos);
+    free(axis_one_dst_pos);
+    free(axis_two_dst_pos);
+    free(axis_three_dst_pos);
+    free(axis_four_dst_pos);
+
+    modbus_close(ctx);
+    modbus_free(ctx);
+}
+
 
 int main()
 {
@@ -178,18 +238,11 @@ int main()
     int rc;
 
     writeAxisPos(axisnum, dstpos);
+    enablePositioning();
 
-
-    /*Get the result*/
-    printf("Test: ");       
-    if (nb_fail)
-        printf("%d FAILS\n", nb_fail);
-    else
-        printf("SUCCESS\n");
-
-    /*Free the memory*/
-    free(axis_one_register);
-    free(axis_one_reply_register);
+    /*sykdebug*/
+    // float writeresult;
+    // readAxisPos(5, writeresult);
 
     modbus_close(ctx);
     modbus_free(ctx);
