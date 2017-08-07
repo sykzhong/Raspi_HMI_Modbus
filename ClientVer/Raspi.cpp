@@ -88,7 +88,11 @@ int RaspiModbus::initModbusRTU()
     ctx = modbus_new_rtu("/dev/ttyUSB0", 38400, 'E', 8, 1);
     modbus_rtu_set_serial_mode(ctx, MODBUS_RTU_RS232);
     modbus_set_slave(ctx, serverid);
-    if(modbus_connect(ctx) == -1)
+    modbus_set_debug(ctx, TRUE);
+    // printf("sykdebug: begin to connect! \n");
+    rc = modbus_connect(ctx);
+    // printf("sykdebug: finish connection, rc = %d\n", rc);
+    if(rc == -1)
     {
         fprintf(stderr, "Coneection failed: %s\n", modbus_strerror(errno));
         modbus_free(ctx);
@@ -136,10 +140,12 @@ int RaspiModbus::readAxisPos(const int &axisnum, float &f_axispos)
     if (rc != nb) 
     {
         printf("ERROR modbus_read_registers single (%d)\n", rc);
+        fprintf(stderr, "%s\n", modbus_strerror(errno));
         printf("Address = %d\n", addr);
         return -1;
     }
-    f_axispos = modbus_get_float_abcd(p_axispos);
+    // f_axispos = modbus_get_float_abcd(p_axispos);
+    f_axispos = modbus_get_float(p_axispos);
     
     printf("sykdebug: f_axispos = %f\n", f_axispos);
 
@@ -175,12 +181,14 @@ int RaspiModbus::writeAxisPos(const int &axisnum, float &f_axispos)
             return -1;
     }
 
-    modbus_set_float_abcd(f_axispos, p_axisdstpos);
+    // modbus_set_float_abcd(f_axispos, p_axisdstpos);
+    modbus_set_float(f_axispos, p_axisdstpos);
 
     rc = modbus_write_registers(ctx, addr, nb, p_axisdstpos);
     if (rc != nb) 
     {
         printf("ERROR modbus_write_registers (%d)\n", rc);
+        fprintf(stderr, "%s\n", modbus_strerror(errno));
         printf("Address = %d, nb = %d\n", addr, nb);
         return -1;
     }
@@ -197,6 +205,7 @@ int RaspiModbus::enablePositioning()
     if(rc != 1)
     {
         printf("ERROR modbus_write_bit (%d)\n", rc);
+        fprintf(stderr, "%s\n", modbus_strerror(errno));
         printf("Address = %d, value = %d\n", addr, down);
         return -1;
     }
@@ -205,6 +214,7 @@ int RaspiModbus::enablePositioning()
     if(rc != 1)
     {
         printf("ERROR modbus_write_bit (%d)\n", rc);
+        fprintf(stderr, "%s\n", modbus_strerror(errno));
         printf("Address = %d, value = %d\n", addr, up);
         return -1;
     }
@@ -213,9 +223,48 @@ int RaspiModbus::enablePositioning()
     if(rc != 1)
     {
         printf("ERROR modbus_write_bit (%d)\n", rc);
+        fprintf(stderr, "%s\n", modbus_strerror(errno));
         printf("Address = %d, value = %d\n", addr, down);
         return -1;
     }
 
     return 1;
+}
+
+int RaspiModbus::readBit(uint8_t addr)
+{
+    int rc;
+    int nb = 1;
+    uint8_t *p_axisdstpos = (uint8_t *)malloc(sizeof(uint8_t));
+    rc = modbus_read_bits(ctx, addr, nb, p_axisdstpos);
+    if (rc != nb) 
+    {
+        printf("ERROR modbus_read_bits (%d)\n", rc);
+        fprintf(stderr, "%s\n", modbus_strerror(errno));
+        printf("Address = %d, nb = %d\n", addr, nb);
+        return -1;
+    }
+    return 0;
+    return 1;
+}
+
+void RaspiModbus::slave()
+{
+    modbus_mapping_t *mb_mapping = modbus_mapping_new(MODBUS_MAX_READ_BITS, 0,
+                                    MODBUS_MAX_READ_REGISTERS, 0);
+    int rc;
+
+    for(;;) {
+        uint8_t query[MODBUS_TCP_MAX_ADU_LENGTH];
+
+        rc = modbus_receive( ctx, query);
+        if (rc > 0) {
+            modbus_reply( ctx, query, rc, mb_mapping);
+        } else if (rc  == -1) {
+            /* Connection closed by the client or error */
+            break;
+        }
+    }
+
+    printf("Quit the loop: %s\n", modbus_strerror(errno));
 }

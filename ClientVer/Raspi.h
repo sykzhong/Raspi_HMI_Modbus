@@ -25,7 +25,7 @@
 #include <modbus/modbus.h>
 
 /* Register of HMI(for Raspi to read), saving current status of different parameters */
-#define ADDR_AXIS_ONE_POS            0       //FLOAT
+#define ADDR_AXIS_ONE_POS            40000       //FLOAT
 #define ADDR_AXIS_TWO_POS            2       //FLOAT
 #define ADDR_AXIS_THREE_POS          4       //FLOAT
 #define ADDR_AXIS_FOUR_POS           6       //FLOAT
@@ -35,15 +35,16 @@
 #define ADDR_IDENTIFYING_FLAG        11      //Us 1-Enable identifying module 0-Unable
 
 /* Register of HMI(for Raspi to write) */
-#define ADDR_AXIS_ONE_DST_POS        100     //FLOAT
-#define ADDR_AXIS_TWO_DST_POS        102     //FLOAT
-#define ADDR_AXIS_THREE_DST_POS      104     //FLOAT
-#define ADDR_AXIS_FOUR_DST_POS       106     //FLOAT
-#define ADDR_BEGIN_POSITIONING       108     //US 0->1 begin positioning
-#define ADDR_CAMERA_ROTATE           109     //US 0-Up 1-Down
-#define ADDR_CLAW_MATERIALS_CONTROL  110     //US 0-Keep 1-Loose
-#define ADDR_CLAW_PRODUCT_CONTROL    111     //US 0-Keep 1-Loose
-#define ADDR_FINISH_IDENTIFYING      112     //US 0-Identifying 1-Finished 2-Failed
+#define ADDR_AXIS_ONE_DST_POS        40100     //FLOAT
+#define ADDR_AXIS_TWO_DST_POS        40102     //FLOAT
+#define ADDR_AXIS_THREE_DST_POS      40104     //FLOAT
+#define ADDR_AXIS_FOUR_DST_POS       40106     //FLOAT
+#define ADDR_BEGIN_POSITIONING       40108     //US 0->1 begin positioning
+#define ADDR_CAMERA_ROTATE           40109     //US 0-Up 1-Down
+#define ADDR_CLAW_MATERIALS_CONTROL  40110     //US 0-Keep 1-Loose
+#define ADDR_CLAW_PRODUCT_CONTROL    40111     //US 0-Keep 1-Loose
+#define ADDR_FINISH_IDENTIFYING      40112     //US 0-Identifying 1-Finished 2-Failed
+
 
 enum AXIS_NUM
 {
@@ -62,10 +63,13 @@ public:
 	int initModbusRTU();
 	int closeModbus();
 
+	int readBit(uint8_t addr = 0);
+
 	int readAxisPos(const int &axisnum, float &f_axispos);
 	int writeAxisPos(const int &axisnum, float &f_axispos);
 	int enablePositioning();
 
+	void slave();
 private:
 	static modbus_t* ctx;
 	static uint16_t *axis_one_pos  ;
