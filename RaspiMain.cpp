@@ -6,15 +6,19 @@ int main()
 
 
     /* Test write modbus */
-    float dstpos = 18.0;
+    // float dstpos = 18.0;
+    // int axisnum = AXIS_ONE;
+    // int rc;
+
+    // raspi.writeAxisPos(axisnum, dstpos);
+    // raspi.enablePositioning();
+
+    /* Test read modbus */
+    float dstpos = 0.0;
     int axisnum = AXIS_ONE;
     int rc;
 
-    raspi.writeAxisPos(axisnum, dstpos);
-    raspi.enablePositioning();
-
-    /*sykdebug*/
-    // float writeresult;
-    // readAxisPos(5, writeresult);
+    rc = raspi.readAxisPos(axisnum, dstpos);
+    printf("dstpos = %f\n", dstpos);
 
 }

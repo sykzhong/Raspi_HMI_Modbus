@@ -12,7 +12,6 @@
 */
 
 #include "Raspi.h"
-
 modbus_t* RaspiModbus::ctx = NULL;
 
 /* Registers of 4 axis, each register contain 4 bytes */
@@ -26,19 +25,31 @@ uint16_t * RaspiModbus::axis_two_dst_pos   = (uint16_t *)malloc(2*sizeof(uint16_
 uint16_t * RaspiModbus::axis_three_dst_pos = (uint16_t *)malloc(2*sizeof(uint16_t));
 uint16_t * RaspiModbus::axis_four_dst_pos  = (uint16_t *)malloc(2*sizeof(uint16_t));
 
-const int RaspiModbus::slaveid = 6;
+const int RaspiModbus::serverid = 6;
 
 RaspiModbus::RaspiModbus()
 {
-    initModbusTCP();
+    // initModbusTCP();
+    initModbusRTU();
+    int nb = 2;
+
+    memset(axis_one_pos, 0, nb*sizeof(uint16_t));
+    memset(axis_two_pos, 0, nb*sizeof(uint16_t));
+    memset(axis_three_pos, 0, nb*sizeof(uint16_t));
+    memset(axis_four_pos, 0, nb*sizeof(uint16_t));
+
+    memset(axis_one_dst_pos, 0, nb*sizeof(uint16_t));
+    memset(axis_two_dst_pos, 0, nb*sizeof(uint16_t));
+    memset(axis_three_dst_pos, 0, nb*sizeof(uint16_t));
+    memset(axis_four_dst_pos, 0, nb*sizeof(uint16_t));
 }
 
 RaspiModbus::~RaspiModbus()
 {
-    closeModbusTCP();
+    closeModbus();
 }
 
-int RaspiModbus::closeModbusTCP()
+int RaspiModbus::closeModbus()
 {
     free(axis_one_pos);
     free(axis_two_pos);
@@ -57,10 +68,10 @@ int RaspiModbus::closeModbusTCP()
 
 int RaspiModbus::initModbusTCP()
 {
-    // ctx = modbus_new_tcp("192.168.123.156", 502);           //Connect to windows
-    ctx = modbus_new_tcp("192.168.142.129", 502);           //Connect to Ubuntu
+    ctx = modbus_new_tcp("192.168.123.156", 502);           //Connect to windows
+    // ctx = modbus_new_tcp("192.168.142.129", 502);           //Connect to Ubuntu
     modbus_set_debug(ctx, TRUE);
-    modbus_set_slave(ctx, slaveid);       //If slave use slave ID, then there need to set too
+    modbus_set_slave(ctx, serverid);       //If slave use slave ID, then there need to set too
 
     if(modbus_connect(ctx) == -1)
     {
@@ -68,20 +79,24 @@ int RaspiModbus::initModbusTCP()
         modbus_free(ctx);
         return -1;
     }
-
-    int nb = 2;
-
-    memset(axis_one_pos, 0, nb*sizeof(uint16_t));
-    memset(axis_two_pos, 0, nb*sizeof(uint16_t));
-    memset(axis_three_pos, 0, nb*sizeof(uint16_t));
-    memset(axis_four_pos, 0, nb*sizeof(uint16_t));
-
-    memset(axis_one_dst_pos, 0, nb*sizeof(uint16_t));
-    memset(axis_two_dst_pos, 0, nb*sizeof(uint16_t));
-    memset(axis_three_dst_pos, 0, nb*sizeof(uint16_t));
-    memset(axis_four_dst_pos, 0, nb*sizeof(uint16_t));
-
     return 0;
+}
+
+int RaspiModbus::initModbusRTU()
+{
+    int rc = 0;
+    ctx = modbus_new_rtu("/dev/ttyUSB0", 38400, 'E', 8, 1);
+    modbus_rtu_set_serial_mode(ctx, MODBUS_RTU_RS232);
+    modbus_set_slave(ctx, serverid);
+    if(modbus_connect(ctx) == -1)
+    {
+        fprintf(stderr, "Coneection failed: %s\n", modbus_strerror(errno));
+        modbus_free(ctx);
+        return -1;
+    }
+    return 0;
+
+
 }
 
 int RaspiModbus::readAxisPos(const int &axisnum, float &f_axispos)
@@ -125,7 +140,8 @@ int RaspiModbus::readAxisPos(const int &axisnum, float &f_axispos)
         return -1;
     }
     f_axispos = modbus_get_float_abcd(p_axispos);
-    printf("sykdebug: f_axispos = %f", f_axispos);
+    
+    printf("sykdebug: f_axispos = %f\n", f_axispos);
 
     return 0;
 }
