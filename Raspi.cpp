@@ -3,8 +3,10 @@
 modbus_t* RaspiServer::ctx = NULL;
 modbus_mapping_t* RaspiServer::mb_mapping = modbus_mapping_new(MODBUS_MAX_READ_BITS, 0,
                                     MODBUS_MAX_READ_REGISTERS, 0);
-int RaspiServer::server_socket = -1;
+int RaspiServer::server_socket  = -1;
+const int RaspiServer::serverid = 6;
 uint8_t RaspiServer::query[MODBUS_TCP_MAX_ADU_LENGTH];
+
 
 // #define NB_CONNECTION       5
 
@@ -13,7 +15,6 @@ uint8_t RaspiServer::query[MODBUS_TCP_MAX_ADU_LENGTH];
 RaspiServer::RaspiServer(const int connection_type) :
 nb_float  	(2),
 nb_unsigned (2),
-serverid 	(6),
 axis_one_pos		((uint16_t *)malloc(nb_float*sizeof(uint16_t))),
 axis_two_pos		((uint16_t *)malloc(nb_float*sizeof(uint16_t))),
 axis_three_pos		((uint16_t *)malloc(nb_float*sizeof(uint16_t))),
@@ -24,14 +25,17 @@ axis_three_dst_pos	((uint16_t *)malloc(nb_float*sizeof(uint16_t))),
 axis_four_dst_pos	((uint16_t *)malloc(nb_float*sizeof(uint16_t))),
 nb_connection(5)
 {
-	if(connection_type == TYPE_RTU)
+    if(connection_type == TYPE_RTU)
 	{
+        printf("sykdebug:rtu type\n");
 		if(initRTU() == 0)
+        {
 			ret = pthread_create(&th, NULL, threadRTU, mb_mapping);
+        }
 	}
 	else if(connection_type == TYPE_TCP)
 	{
-        // printf("sykdebug:tcp type\n");
+        printf("sykdebug:tcp type\n");
 		if(initTCP() == 0)
 			ret = pthread_create(&th, NULL, threadTCP, mb_mapping);
 
@@ -52,9 +56,10 @@ RaspiServer::~RaspiServer()
 
 int RaspiServer::initRTU()
 {
-	modbus_set_debug(ctx, TRUE);
-
+	
+    // printf("sykdebug: begin to create new rtu ctx\n");
 	ctx = modbus_new_rtu("/dev/ttyUSB0", 38400, 'E', 8, 1);
+    modbus_set_debug(ctx, FALSE);
 	mb_mapping = modbus_mapping_new(MODBUS_MAX_READ_BITS, 0,
                                     MODBUS_MAX_READ_REGISTERS, 0);
 	if (mb_mapping == NULL) {
@@ -65,7 +70,8 @@ int RaspiServer::initRTU()
     }
 
 	modbus_rtu_set_serial_mode(ctx, MODBUS_RTU_RS232);
-	modbus_set_slave(ctx, serverid);
+    modbus_set_slave(ctx, RaspiServer::serverid);
+	
 	if(modbus_connect(ctx) == -1)
     {
         fprintf(stderr, "Coneection failed: %s\n", modbus_strerror(errno));
@@ -73,7 +79,8 @@ int RaspiServer::initRTU()
         return -1;
     }
 
-    usleep(100);
+
+    // usleep(100);
     return 0;
 }
 
@@ -81,13 +88,11 @@ int RaspiServer::initTCP()
 {
 
 	ctx = modbus_new_tcp("192.168.142.129", 502);
-	modbus_set_slave(ctx, serverid);
-
     /*sykfix: modbus_mapping_new should give rasp pi write bits and write register*/
     mb_mapping = modbus_mapping_new(MODBUS_MAX_READ_BITS, 0,
                                     MODBUS_MAX_READ_REGISTERS, 0);
 
-    modbus_set_slave(ctx, serverid);
+    modbus_set_slave(ctx, RaspiServer::serverid);
 
     if (mb_mapping == NULL) {
         fprintf(stderr, "Failed to allocate the mapping: %s\n",
@@ -110,25 +115,31 @@ int RaspiServer::initTCP()
 void * RaspiServer::threadRTU(void *arg)
 {
 	int rc;
-	for(;;)
-	{
+    for(;;) {
         uint8_t query[MODBUS_TCP_MAX_ADU_LENGTH];
         rc = modbus_receive(ctx, query);
-        if (rc > 0)
-        {
+        if (rc > 0) {
             modbus_reply(ctx, query, rc, mb_mapping);
-        }
-        else if (rc  == -1)
-        {
+        } else if (rc  == -1) {
             /* Connection closed by the client or error */
-            break;
+            modbus_close(ctx);
+            modbus_free(ctx);
+
+            ctx = modbus_new_rtu("/dev/ttyUSB0", 38400, 'E', 8, 1);
+            modbus_set_slave(ctx, RaspiServer::serverid);
+            modbus_connect(ctx);
+
+            //break;
         }
     }
     printf("Quit the loop: %s\n", modbus_strerror(errno));
+
     /* For RTU, skipped by TCP (no TCP connect) */
-    modbus_close(ctx);
-    modbus_free(ctx);
-    return 0;
+    modbus_close( ctx);
+    modbus_free( ctx);
+
+    // return 0;
+
 }
 
 void * RaspiServer::threadTCP(void *arg)
@@ -246,7 +257,7 @@ int RaspiServer::getAxisCurPos(const int &axisnum, float &f_axispos) const
     }
     p_axispos = &(mb_mapping->tab_registers[addr]);
     f_axispos = modbus_get_float(p_axispos);
-    printf("sykdebug: addr = %d, f_axispos = %f\n", addr, f_axispos);
+    printf("sykdebug: get pos, addr = %d, f_axispos = %f\n", addr, f_axispos);
     return 0;
 }
 

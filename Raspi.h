@@ -110,7 +110,7 @@ private:
 	uint16_t *axis_three_dst_pos;
 	uint16_t *axis_four_dst_pos ;
 
-	const int serverid;
+	static const int serverid;
 
 	int nb_float;			//register number of float data
 	int nb_unsigned;		//register number of unsigned data
