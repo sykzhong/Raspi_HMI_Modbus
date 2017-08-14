@@ -8,10 +8,6 @@ const int RaspiServer::serverid = 6;
 uint8_t RaspiServer::query[MODBUS_TCP_MAX_ADU_LENGTH];
 
 
-// #define NB_CONNECTION       5
-
-// static int server_socket = -1;		//for TCP
-
 RaspiServer::RaspiServer(const int connection_type) :
 nb_float  	(2),
 nb_unsigned (2),
@@ -325,18 +321,24 @@ int RaspiServer::enablePositioning()
 
 
 	/* sykfix: how to define the delaytime's length */
-	__useconds_t delaytime = 50;
-    const int down = 0x00;
-    const int up   = 0xFF;
+	unsigned int delaytime = 1000 * 1000;
+    // const int down = 0x00;
+    // const int up   = 0xFF;
+    const uint16_t down = 0;
+    const uint16_t up   = 1;
 
     *p_enablepos = down;
     usleep(delaytime);
+    printf("sykdebug: *p_enablepos = %d\n", *p_enablepos);
 
     *p_enablepos = up;
     usleep(delaytime);
+    printf("sykdebug: *p_enablepos = %d\n", *p_enablepos);
 
-    *p_enablepos = down;
-    usleep(100);
+    // *p_enablepos = down;
+    // usleep(delaytime);
+    // printf("sykdebug: *p_enablepos = %d\n", *p_enablepos);
+
 
     /* sykdebug: show the dst pos of axis */
     int axisnum = 0;
@@ -370,10 +372,10 @@ int RaspiServer::setCameraPos(const int & rotateflag)
     switch(rotateflag)
     {
         case CAM_DOWN:
-            *p_posflag = 1;
+            *p_posflag = 0;
             break;
         case CAM_UP:
-            *p_posflag = 0;
+            *p_posflag = 1;
             break;
         default:
             printf("Error setCameraPos: rotateflag is wrong\n");
@@ -435,6 +437,13 @@ int RaspiServer::getClawPos(const int &clawindex) const
     }
     uint16_t *p_posflag = &(mb_mapping->tab_registers[addr_clawposflag]);
     return *p_posflag;
+}
+
+int RaspiServer::setOwnership(const int ownershipflag)
+{
+    uint16_t addr_ownershipflag = ADDR_OWNERSHIP;
+    uint8_t *p_ownershipflag = &(mb_mapping->tab_bits[addr_ownershipflag]);
+    *p_ownershipflag = ownershipflag;
 }
 
 void RaspiServer::closeModbus(int dummy)

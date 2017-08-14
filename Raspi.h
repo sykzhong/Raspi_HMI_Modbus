@@ -24,26 +24,30 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include <iostream>
+
 /* Register of Raspi, saving current status of different parameters */
-#define ADDR_AXIS_ONE_POS            0       //FLOAT
-#define ADDR_AXIS_TWO_POS            2       //FLOAT
-#define ADDR_AXIS_THREE_POS          4       //FLOAT
-#define ADDR_AXIS_FOUR_POS           6       //FLOAT
-#define ADDR_MATERIAL_CLAW_STATUS    8       //US 1-Clamp 0-Loose      
-#define ADDR_PRODUCT_CLAW_STATUS     9       //US 1-Clamp 0-Loose      
-#define ADDR_POSITIONING_FLAG        10      //US 1-Positioning 0-Normal status
-#define ADDR_IDENTIFYING_FLAG        11      //US 1-Enable identifying module 0-Unable
+#define ADDR_AXIS_ONE_POS          		0       // 4x FLOAT
+#define ADDR_AXIS_TWO_POS          		2       // 4x FLOAT
+#define ADDR_AXIS_THREE_POS        		4       // 4x FLOAT
+#define ADDR_AXIS_FOUR_POS         		6       // 4x FLOAT
+#define ADDR_MATERIAL_CLAW_STATUS  		8       // 4x US 1-Clamp 0-Loose      
+#define ADDR_PRODUCT_CLAW_STATUS   		9       // 4x US 1-Clamp 0-Loose      
+#define ADDR_POSITIONING_FLAG      		10      // 4x US 1-Positioning 0-Normal status
+#define ADDR_IDENTIFYING_FLAG      		11      // 4x US 1-Enable identifying module 0-Unable
 
 /* Register of Raspi, saving destination or indiction for controller */
-#define ADDR_AXIS_ONE_DST_POS        100     //FLOAT
-#define ADDR_AXIS_TWO_DST_POS        102     //FLOAT
-#define ADDR_AXIS_THREE_DST_POS      104     //FLOAT
-#define ADDR_AXIS_FOUR_DST_POS       106     //FLOAT
-#define ADDR_ENABLE_POSITIONING      108     //US 0->1 enable positioning
-#define ADDR_CAMERA_ROTATE           109     //US 0-Up 1-Down
-#define ADDR_MATERIAL_CLAW_CONTROL   110     //US 0-Keep 1-Loose
-#define ADDR_PRODUCT_CLAW_CONTROL    111     //US 0-Keep 1-Loose
-#define ADDR_FINISH_IDENTIFYING      112     //US 0-Identifying 1-Finished 2-Failed
+#define ADDR_AXIS_ONE_DST_POS      		100     // 4x FLOAT
+#define ADDR_AXIS_TWO_DST_POS      		102     // 4x FLOAT
+#define ADDR_AXIS_THREE_DST_POS    		104     // 4x FLOAT
+#define ADDR_AXIS_FOUR_DST_POS     		106     // 4x FLOAT
+#define ADDR_ENABLE_POSITIONING    		108     // 4x US 0->1 enable positioning
+#define ADDR_CAMERA_ROTATE         		109     // 4x US 0-Up 1-Down
+#define ADDR_MATERIAL_CLAW_CONTROL 		110     // 4x US 0-Keep 1-Loose
+#define ADDR_PRODUCT_CLAW_CONTROL  		111     // 4x US 0-Keep 1-Loose
+#define ADDR_FINISH_IDENTIFYING    		112     // 4x US 0-Identifying 1-Finished 2-Failed
+
+#define ADDR_OWNERSHIP					28		// 0x US 0-no ownership 1-get ownership	
 
 enum AXIS_NUM
 {
@@ -87,6 +91,7 @@ public:
 	int setCameraPos  	(const int &rotateflag);
 	int getClawPos		(const int &clawindex) const;
 	int setClawPos		(const int &clawindex, const int &clawflag);
+	int setOwnership	(const int ownershipflag);
 
 	uint16_t getPositioningFlag() const;
 	static void closeModbus (const int dummy);
