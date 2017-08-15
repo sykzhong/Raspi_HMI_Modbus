@@ -19,7 +19,11 @@ axis_one_dst_pos	((uint16_t *)malloc(nb_float*sizeof(uint16_t))),
 axis_two_dst_pos	((uint16_t *)malloc(nb_float*sizeof(uint16_t))),
 axis_three_dst_pos	((uint16_t *)malloc(nb_float*sizeof(uint16_t))),
 axis_four_dst_pos	((uint16_t *)malloc(nb_float*sizeof(uint16_t))),
-nb_connection(5)
+nb_connection   (5),
+axis_x_org      (0),
+axis_y_org      (0),
+axis_z_org      (0),
+axis_theta_org  (0)
 {
     if(connection_type == TYPE_RTU)
 	{
@@ -48,7 +52,6 @@ RaspiServer::~RaspiServer()
 {
 	closeModbus(1);
 }
-
 
 int RaspiServer::initRTU()
 {
@@ -229,6 +232,17 @@ void * RaspiServer::threadTCP(void *arg)
     }
 }
 
+int RaspiServer::Init()
+{
+    this->setOwnership(1);  //sykfix
+    setCameraStatus(CAM_DOWN);
+    setClawStatus(MATERIAL_CLAW, CLAW_GRASP);
+    setClawStatus(PRODUCT_CLAW, CLAW_LOOSE);
+
+    /* sykfix: add cam position */
+    return 0;
+}
+
 int RaspiServer::getAxisCurPos(const int &axisnum, float &f_axispos) const
 {
 	uint16_t * p_axispos = (uint16_t *)malloc(nb_float*sizeof(uint16_t));
@@ -321,9 +335,8 @@ int RaspiServer::enablePositioning()
 
 
 	/* sykfix: how to define the delaytime's length */
-	unsigned int delaytime = 1000 * 1000;
-    // const int down = 0x00;
-    // const int up   = 0xFF;
+	unsigned int delaytime = 100 * 1000;
+
     const uint16_t down = 0;
     const uint16_t up   = 1;
 
@@ -334,11 +347,6 @@ int RaspiServer::enablePositioning()
     *p_enablepos = up;
     usleep(delaytime);
     printf("sykdebug: *p_enablepos = %d\n", *p_enablepos);
-
-    // *p_enablepos = down;
-    // usleep(delaytime);
-    // printf("sykdebug: *p_enablepos = %d\n", *p_enablepos);
-
 
     /* sykdebug: show the dst pos of axis */
     int axisnum = 0;
@@ -358,14 +366,14 @@ int RaspiServer::enablePositioning()
     return 0;
 }
 
-uint16_t RaspiServer::getPositioningFlag() const
+int RaspiServer::getPositioningFlag() const
 {
     uint16_t addr_posflag = ADDR_POSITIONING_FLAG;
     uint16_t *p_posflag = &(mb_mapping->tab_registers[addr_posflag]);
     return *p_posflag;
 }
 
-int RaspiServer::setCameraPos(const int & rotateflag)
+int RaspiServer::setCameraStatus(const int & rotateflag)
 {
     uint16_t addr_camposflag = ADDR_CAMERA_ROTATE;
     uint16_t *p_posflag = &(mb_mapping->tab_registers[addr_camposflag]);
@@ -384,7 +392,7 @@ int RaspiServer::setCameraPos(const int & rotateflag)
     return 0;
 }
 
-int RaspiServer::setClawPos(const int &clawindex, const int &clawflag)
+int RaspiServer::setClawStatus(const int &clawindex, const int &clawflag)
 {
     uint16_t addr_clawposflag;
     switch(clawindex)
@@ -420,7 +428,7 @@ int RaspiServer::setClawPos(const int &clawindex, const int &clawflag)
     return 0;
 }
 
-int RaspiServer::getClawPos(const int &clawindex) const
+int RaspiServer::getClawStatus(const int &clawindex) const
 {
     uint16_t addr_clawposflag;
     switch(clawindex)
@@ -442,8 +450,10 @@ int RaspiServer::getClawPos(const int &clawindex) const
 int RaspiServer::setOwnership(const int ownershipflag)
 {
     uint16_t addr_ownershipflag = ADDR_OWNERSHIP;
-    uint8_t *p_ownershipflag = &(mb_mapping->tab_bits[addr_ownershipflag]);
+    uint16_t *p_ownershipflag = &(mb_mapping->tab_registers[addr_ownershipflag]);
     *p_ownershipflag = ownershipflag;
+
+    return 0;
 }
 
 void RaspiServer::closeModbus(int dummy)
