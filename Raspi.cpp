@@ -20,10 +20,10 @@ axis_two_dst_pos	((uint16_t *)malloc(nb_float*sizeof(uint16_t))),
 axis_three_dst_pos	((uint16_t *)malloc(nb_float*sizeof(uint16_t))),
 axis_four_dst_pos	((uint16_t *)malloc(nb_float*sizeof(uint16_t))),
 nb_connection   (5),
-axis_x_org      (0),
-axis_y_org      (0),
-axis_z_org      (0),
-axis_theta_org  (0)
+axis_x_org      (-180),
+axis_y_org      (-260),
+axis_z_org      (595),
+axis_u_org      (0)
 {
     if(connection_type == TYPE_RTU)
 	{
@@ -45,7 +45,7 @@ axis_theta_org  (0)
 	    printf( "Create thread error!\n");
 	    return;
 	}
-    sleep(1);
+    sleep(4);
 }
 
 RaspiServer::~RaspiServer()
@@ -59,6 +59,7 @@ int RaspiServer::initRTU()
     // printf("sykdebug: begin to create new rtu ctx\n");
 	ctx = modbus_new_rtu("/dev/ttyUSB0", 38400, 'E', 8, 1);
     modbus_set_debug(ctx, FALSE);
+    // modbus_set_debug(ctx, TRUE);
 	mb_mapping = modbus_mapping_new(MODBUS_MAX_READ_BITS, 0,
                                     MODBUS_MAX_READ_REGISTERS, 0);
 	if (mb_mapping == NULL) {
@@ -125,6 +126,7 @@ void * RaspiServer::threadRTU(void *arg)
             modbus_free(ctx);
 
             ctx = modbus_new_rtu("/dev/ttyUSB0", 38400, 'E', 8, 1);
+            // modbus_set_debug(ctx, TRUE);
             modbus_set_slave(ctx, RaspiServer::serverid);
             modbus_connect(ctx);
 
@@ -240,26 +242,44 @@ int RaspiServer::Init()
     setClawStatus(PRODUCT_CLAW, CLAW_LOOSE);
 
     /* sykfix: add cam position */
+    setAxisDstPos(AXIS_X, 0);
+    setAxisDstPos(AXIS_Y, 0);
+    setAxisDstPos(AXIS_Z, 0);
+    setAxisDstPos(AXIS_U, 0);
+    enablePositioning();
+
     return 0;
 }
 
 int RaspiServer::getAxisCurPos(const int &axisnum, float &f_axispos) const
 {
 	uint16_t * p_axispos = (uint16_t *)malloc(nb_float*sizeof(uint16_t));
-	uint16_t addr = -1;
+    uint16_t addr = -1;
+    float org     = 0;
+    int sign      = 1;       //for axis_z, sign need to be -1
+    char axisname;
 	switch(axisnum)
     {
-        case AXIS_ONE:
-            addr = ADDR_AXIS_ONE_POS;
+        case AXIS_X:
+            addr = ADDR_AXIS_X_POS;
+            org = axis_x_org;
+            axisname = 'X';
             break;
-        case AXIS_TWO:
-            addr = ADDR_AXIS_TWO_POS;
+        case AXIS_Z:
+            addr = ADDR_AXIS_Z_POS;
+            org = axis_z_org;
+            sign = -1;
+            axisname = 'Z';
             break;
-        case AXIS_THREE:
-            addr = ADDR_AXIS_THREE_POS;
+        case AXIS_U:
+            addr = ADDR_AXIS_U_POS;
+            org = axis_u_org;
+            axisname = 'U';
             break;
-        case AXIS_FOUR:
-            addr = ADDR_AXIS_FOUR_POS;
+        case AXIS_Y:
+            addr = ADDR_AXIS_Y_POS;
+            org = axis_y_org;
+            axisname = 'Y';
             break;
         default:
             printf("Error getAxisCurPos: axisnum input is wrong\n");
@@ -267,7 +287,9 @@ int RaspiServer::getAxisCurPos(const int &axisnum, float &f_axispos) const
     }
     p_axispos = &(mb_mapping->tab_registers[addr]);
     f_axispos = modbus_get_float(p_axispos);
-    printf("sykdebug: get pos, addr = %d, f_axispos = %f\n", addr, f_axispos);
+    printf("sykdebug: get axis raw pos, addr = %d, rawpos = %f\n", addr, f_axispos);
+    f_axispos = sign*(f_axispos - org);
+    printf("sykdebug: get axis world pos, for axis %c, worldpos = %f\n", axisname, f_axispos);
     return 0;
 }
 
@@ -275,47 +297,74 @@ int RaspiServer::setAxisDstPos (const int &axisnum, const float &f_axisdstpos)
 {
 	uint16_t * p_axisdstpos = (uint16_t *)malloc(nb_float*sizeof(uint16_t));
 	uint16_t addr = -1;
+    float org     = 0;
+    int sign      = 1;       //for axis_z, sign need to be -1
+    char axisname;
 	switch(axisnum)
     {
-        case AXIS_ONE:
-            addr = ADDR_AXIS_ONE_DST_POS;
+        case AXIS_X:
+            addr = ADDR_AXIS_X_DST_POS;
+            org = axis_x_org;
+            axisname = 'X';
             break;
-        case AXIS_TWO:
-            addr = ADDR_AXIS_TWO_DST_POS;
+        case AXIS_Z:
+            addr = ADDR_AXIS_Z_DST_POS;
+            org = axis_z_org;
+            sign = -1;
+            axisname = 'Z';
             break;
-        case AXIS_THREE:
-            addr = ADDR_AXIS_THREE_DST_POS;
+        case AXIS_U:
+            addr = ADDR_AXIS_U_DST_POS;
+            org = axis_u_org;
+            axisname = 'U';
             break;
-        case AXIS_FOUR:
-            addr = ADDR_AXIS_FOUR_DST_POS;
+        case AXIS_Y:
+            addr = ADDR_AXIS_Y_DST_POS;
+            org = axis_y_org;
+            axisname = 'Y';
             break;
         default:
             printf("Error getAxisDstPos: axisnum input is wrong\n");
             return -1;
     }
     p_axisdstpos = &(mb_mapping->tab_registers[addr]);
-    modbus_set_float(f_axisdstpos, p_axisdstpos);
-    printf("sykdebug: addr = %d, f_axisdstpos = %f\n", addr, f_axisdstpos);
+    float tmpdstpos;
+    tmpdstpos = sign*f_axisdstpos + org;
+    modbus_set_float(tmpdstpos, p_axisdstpos);
+    printf("sykdebug: set axis raw pos, addr = %d, rawpos = %f\n", addr, tmpdstpos);
+    printf("sykdebug: set axis world pos, for axis %c, worldpos = %f\n", axisname, f_axisdstpos);
     return 0;
 }
 
-int RaspiServer::getAxisDstPos(const int &axisnum, float f_axisdstpos) const
+int RaspiServer::getAxisDstPos(const int &axisnum, float &f_axisdstpos) const
 {
 	uint16_t * p_axisdstpos = (uint16_t *)malloc(nb_float*sizeof(uint16_t));
 	uint16_t addr = -1;
+    float org     = 0;
+    int sign      = 1;       //for axis_z, sign need to be -1
+    char axisname;
 	switch(axisnum)
     {
-        case AXIS_ONE:
-            addr = ADDR_AXIS_ONE_DST_POS;
+        case AXIS_X:
+            addr = ADDR_AXIS_X_DST_POS;
+            org = axis_x_org;
+            axisname = 'X';
             break;
-        case AXIS_TWO:
-            addr = ADDR_AXIS_TWO_DST_POS;
+        case AXIS_Z:
+            addr = ADDR_AXIS_Z_DST_POS;
+            org = axis_z_org;
+            sign = -1;
+            axisname = 'Z';
             break;
-        case AXIS_THREE:
-            addr = ADDR_AXIS_THREE_DST_POS;
+        case AXIS_U:
+            addr = ADDR_AXIS_U_DST_POS;
+            org = axis_u_org;
+            axisname = 'U';
             break;
-        case AXIS_FOUR:
-            addr = ADDR_AXIS_FOUR_DST_POS;
+        case AXIS_Y:
+            addr = ADDR_AXIS_Y_DST_POS;
+            org = axis_y_org;
+            axisname = 'Y';
             break;
         default:
             printf("Error getAxisDstPos: axisnum input is wrong\n");
@@ -323,8 +372,9 @@ int RaspiServer::getAxisDstPos(const int &axisnum, float f_axisdstpos) const
     }
     p_axisdstpos = &(mb_mapping->tab_registers[addr]);
     f_axisdstpos = modbus_get_float(p_axisdstpos);
-    printf("sykdebug: addr = %d, f_axisdstpos = %f\n", addr, f_axisdstpos);
-
+    printf("sykdebug: get axis dst raw pos, addr = %d, rawpos = %f\n", addr, f_axisdstpos);
+    f_axisdstpos = sign*(f_axisdstpos - org);
+    printf("sykdebug: get axis dst world pos, for axis %c, worldpos = %f\n", axisname, f_axisdstpos);
     return 0;
 }
 

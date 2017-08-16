@@ -28,20 +28,20 @@
 
 /* sykfix: need to change axis addr to x y z theta */
 /* Register of Raspi, saving current status of different parameters */
-#define ADDR_AXIS_ONE_POS          		0       // 4x FLOAT
-#define ADDR_AXIS_TWO_POS          		2       // 4x FLOAT
-#define ADDR_AXIS_THREE_POS        		4       // 4x FLOAT
-#define ADDR_AXIS_FOUR_POS         		6       // 4x FLOAT
+#define ADDR_AXIS_X_POS          		0       // 4x FLOAT
+#define ADDR_AXIS_Z_POS          		2       // 4x FLOAT
+#define ADDR_AXIS_U_POS        			4       // 4x FLOAT
+#define ADDR_AXIS_Y_POS         		6       // 4x FLOAT
 #define ADDR_MATERIAL_CLAW_STATUS  		8       // 4x US 1-Clamp 0-Loose      
 #define ADDR_PRODUCT_CLAW_STATUS   		9       // 4x US 1-Clamp 0-Loose      
 #define ADDR_POSITIONING_FLAG      		10      // 4x US 1-Positioning 0-Normal status
 #define ADDR_IDENTIFYING_FLAG      		11      // 4x US 1-Enable identifying module 0-Unable
 
 /* Register of Raspi, saving destination or indiction for controller */
-#define ADDR_AXIS_ONE_DST_POS      		100     // 4x FLOAT
-#define ADDR_AXIS_TWO_DST_POS      		102     // 4x FLOAT
-#define ADDR_AXIS_THREE_DST_POS    		104     // 4x FLOAT
-#define ADDR_AXIS_FOUR_DST_POS     		106     // 4x FLOAT
+#define ADDR_AXIS_X_DST_POS      		100     // 4x FLOAT
+#define ADDR_AXIS_Z_DST_POS      		102     // 4x FLOAT
+#define ADDR_AXIS_U_DST_POS    			104     // 4x FLOAT
+#define ADDR_AXIS_Y_DST_POS     		106     // 4x FLOAT
 #define ADDR_ENABLE_POSITIONING    		108     // 4x US 0->1 enable positioning
 #define ADDR_CAMERA_ROTATE         		109     // 4x US 0-Up 1-Down
 #define ADDR_MATERIAL_CLAW_CONTROL 		110     // 4x US 0-Keep 1-Loose
@@ -52,10 +52,10 @@
 
 enum AXIS_NUM
 {
-    AXIS_ONE = 0,
-    AXIS_TWO,
-    AXIS_THREE,
-    AXIS_FOUR
+    AXIS_X = 0,
+    AXIS_Y,
+    AXIS_Z,
+    AXIS_U
 };
 
 enum CLAW_INDEX
@@ -100,7 +100,7 @@ public:
 	static void * threadTCP(void *arg);
 
 	int getAxisCurPos 	(const int &axisnum, float &f_axispos)   	const;
-	int getAxisDstPos 	(const int &axisnum, float f_axisdstpos) 	const;
+	int getAxisDstPos 	(const int &axisnum, float &f_axisdstpos) 	const;
 	int setAxisDstPos 	(const int &axisnum, const float &f_axisdstpos);
 	int enablePositioning();
 	int getPositioningFlag() const;
@@ -139,7 +139,7 @@ private:
 	const float axis_x_org;
 	const float axis_y_org;
 	const float axis_z_org;
-	const float axis_theta_org;
+	const float axis_u_org;
 
 	int nb_float;				//register number of float data
 	int nb_unsigned;			//register number of unsigned data

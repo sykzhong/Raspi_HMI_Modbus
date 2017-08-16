@@ -1,0 +1,7 @@
+Relationship between raspi axis, HMI axis and World(Picture) axis:
+
+Raspi:					HMI:		|	World(Picture):
+ADDR_AXIS_ONE_POS		X Axis 		|	X Axis
+ADDR_AXIS_TWO_POS		Y Axis 		|	Z Axis (reversed)
+ADDR_AXIS_THREE_POS		U Axis 		|	U Axis
+ADDR_AXIS_FOUR_POST		Z Axis 		|	Y Axis 

@@ -4,7 +4,7 @@ int main()
 {
 	RaspiServer server = RaspiServer(TYPE_RTU);
 
-	int axisnum   = AXIS_ONE;
+	int axisnum   = AXIS_X;
 	float axispos = 1.0;
 
 	/* Test write axis and enable them */
@@ -13,7 +13,7 @@ int main()
 	// server.enablePositioning();
 
 	/* Test read axis */
-	for(axisnum = AXIS_ONE; axisnum <= AXIS_FOUR; axisnum++)
+	for(axisnum = AXIS_X; axisnum <= AXIS_U; axisnum++)
 		server.getAxisCurPos(axisnum, axispos);
 
 	/* Test read claw pos */
@@ -21,7 +21,7 @@ int main()
 	std::cout << server.getClawStatus(PRODUCT_CLAW) << std::endl;
 
 	/* Test set camera pos */
-	std::cout << server.setCameraStatus(CAM_UP) << std::endl;
+	std::cout << server.setCameraStatus(CAM_DOWN) << std::endl;
 
 	/* Test get ownership */
 	server.setOwnership(1);
