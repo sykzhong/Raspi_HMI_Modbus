@@ -77,10 +77,11 @@ enum CAM_STATUS
 	CAM_UP,
 };
 
-enum OWNERSHIP_FLAG
+enum IDENTIFY_FLAG
 {
-	SET_OWNERSHIP,
-	UNSET_OWNERSHIP
+	IDENTIFYING = 0,
+	FINISH_POSITIONING,
+	FAILED_IDENTIFYING
 };
 
 enum CONNECTION_TYPE
@@ -103,14 +104,19 @@ public:
 	int getAxisDstPos 	(const int &axisnum, float &f_axisdstpos) 	const;
 	int setAxisDstPos 	(const int &axisnum, const float &f_axisdstpos);
 	int enablePositioning();
-	int getPositioningFlag() const;
-
+	
 	int setCameraStatus	(const int &rotateflag);
 	int getClawStatus	(const int &clawindex) const;
 	int setClawStatus	(const int &clawindex, const int &clawflag);
 
+	int setCameraPos	(const float &x, const float &y, const float &z);
+	int getCameraPos	(float &x, float &y, float &z)	const;
+	int getCameraDstPos(float &x, float &y, float &z) 	const;
 
-	int setOwnership	(const int ownershipflag);		//sykfix
+	int getDownPosFlag	() const;				//Down data flag
+	int getDownIdentifyFlag() const;			//Down data flag
+	int setUpPosFlag	(const int &posflag);	//Up data flag
+	int getUpPosFlag	() const;				//Up data flag
 
 	int Init();
 

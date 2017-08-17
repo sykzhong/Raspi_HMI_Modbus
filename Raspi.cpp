@@ -45,7 +45,8 @@ axis_u_org      (0)
 	    printf( "Create thread error!\n");
 	    return;
 	}
-    sleep(4);
+    sleep(8);
+    printf("Construction function over\n");
 }
 
 RaspiServer::~RaspiServer()
@@ -236,7 +237,6 @@ void * RaspiServer::threadTCP(void *arg)
 
 int RaspiServer::Init()
 {
-    this->setOwnership(1);  //sykfix
     setCameraStatus(CAM_DOWN);
     setClawStatus(MATERIAL_CLAW, CLAW_GRASP);
     setClawStatus(PRODUCT_CLAW, CLAW_LOOSE);
@@ -287,9 +287,9 @@ int RaspiServer::getAxisCurPos(const int &axisnum, float &f_axispos) const
     }
     p_axispos = &(mb_mapping->tab_registers[addr]);
     f_axispos = modbus_get_float(p_axispos);
-    printf("sykdebug: get axis raw pos, addr = %d, rawpos = %f\n", addr, f_axispos);
+    // printf("sykdebug: get axis raw pos, addr = %d, rawpos = %f\n", addr, f_axispos);
     f_axispos = sign*(f_axispos - org);
-    printf("sykdebug: get axis world pos, for axis %c, worldpos = %f\n", axisname, f_axispos);
+    // printf("sykdebug: get axis world pos, for axis %c, worldpos = %f\n", axisname, f_axispos);
     return 0;
 }
 
@@ -332,7 +332,7 @@ int RaspiServer::setAxisDstPos (const int &axisnum, const float &f_axisdstpos)
     tmpdstpos = sign*f_axisdstpos + org;
     modbus_set_float(tmpdstpos, p_axisdstpos);
     printf("sykdebug: set axis raw pos, addr = %d, rawpos = %f\n", addr, tmpdstpos);
-    printf("sykdebug: set axis world pos, for axis %c, worldpos = %f\n", axisname, f_axisdstpos);
+    // printf("sykdebug: set axis world pos, for axis %c, worldpos = %f\n", axisname, f_axisdstpos);
     return 0;
 }
 
@@ -398,6 +398,8 @@ int RaspiServer::enablePositioning()
     usleep(delaytime);
     printf("sykdebug: *p_enablepos = %d\n", *p_enablepos);
 
+    // *p_enablepos = down;
+
     /* sykdebug: show the dst pos of axis */
     int axisnum = 0;
     float axisdstpos = 0;
@@ -409,18 +411,40 @@ int RaspiServer::enablePositioning()
 
     /* sykfix: need to judge whether finish positionning */
 
-    // while(getPositioningFlag() != 1)
+    // while(getUpPosFlag() != 1)
     // {
     	
     // }
     return 0;
 }
 
-int RaspiServer::getPositioningFlag() const
+int RaspiServer::getDownPosFlag() const
 {
     uint16_t addr_posflag = ADDR_POSITIONING_FLAG;
     uint16_t *p_posflag = &(mb_mapping->tab_registers[addr_posflag]);
     return *p_posflag;
+}
+
+int RaspiServer::getDownIdentifyFlag() const
+{
+    uint16_t addr_posflag = ADDR_IDENTIFYING_FLAG;
+    uint16_t *p_posflag = &(mb_mapping->tab_registers[addr_posflag]);
+    return *p_posflag;
+}
+
+int RaspiServer::getUpPosFlag() const
+{
+    uint16_t addr_posflag = ADDR_FINISH_IDENTIFYING;
+    uint16_t *p_posflag = &(mb_mapping->tab_registers[addr_posflag]);
+    return *p_posflag;
+}
+
+int RaspiServer::setUpPosFlag(const int &posflag)
+{
+    uint16_t addr_posflag = ADDR_FINISH_IDENTIFYING;
+    uint16_t *p_posflag = &(mb_mapping->tab_registers[addr_posflag]);
+    *p_posflag = posflag;
+    return 0;
 }
 
 int RaspiServer::setCameraStatus(const int & rotateflag)
@@ -460,7 +484,7 @@ int RaspiServer::setClawStatus(const int &clawindex, const int &clawflag)
 
     uint16_t *p_posflag = &(mb_mapping->tab_registers[addr_clawposflag]);
     /* sykfix: need to add judgement of claw's status */
-    switch(addr_clawposflag)
+    switch(clawflag)
     {
         case CLAW_HOLDING:
             *p_posflag = 0;
@@ -497,15 +521,6 @@ int RaspiServer::getClawStatus(const int &clawindex) const
     return *p_posflag;
 }
 
-int RaspiServer::setOwnership(const int ownershipflag)
-{
-    uint16_t addr_ownershipflag = ADDR_OWNERSHIP;
-    uint16_t *p_ownershipflag = &(mb_mapping->tab_registers[addr_ownershipflag]);
-    *p_ownershipflag = ownershipflag;
-
-    return 0;
-}
-
 void RaspiServer::closeModbus(int dummy)
 {
 	if (server_socket != -1) {
@@ -516,4 +531,46 @@ void RaspiServer::closeModbus(int dummy)
     modbus_mapping_free(mb_mapping);
 
     exit(dummy);
+}
+
+int RaspiServer::setCameraPos(const float &x, const float &y, const float &z)
+{
+    setAxisDstPos(AXIS_X, x);
+    setAxisDstPos(AXIS_Y, y);
+    setAxisDstPos(AXIS_Z, z);
+    enablePositioning();
+    return 0;
+}
+
+int RaspiServer::getCameraPos(float &x, float &y, float &z) const
+{
+    getAxisCurPos(AXIS_X, x);
+    getAxisCurPos(AXIS_Y, y);
+    getAxisCurPos(AXIS_Z, z);
+    int positionningflag;
+    // positionningflag = getUpPosFlag();
+    float tmpx, tmpy, tmpz;
+    getCameraDstPos(tmpx, tmpy, tmpz);
+    if(tmpx == x && tmpy == tmpy && tmpz == tmpz)
+    {
+        positionningflag = 1;
+
+    }
+    else
+        positionningflag = 0;
+
+    if(positionningflag == 0)
+        printf("Still Positionning: ");
+    else
+        printf("Finish Positionning: ");
+    printf("X = %.2f, Y = %.2f, Z = %.2f\n", x, y, z);
+    return 0;
+}
+
+int RaspiServer::getCameraDstPos(float &x, float &y, float &z) const
+{
+    getAxisDstPos(AXIS_X, x);
+    getAxisDstPos(AXIS_Y, y);
+    getAxisDstPos(AXIS_Z, z);
+    return 0;
 }
