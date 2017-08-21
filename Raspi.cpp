@@ -422,6 +422,8 @@ int RaspiServer::enablePositioning()
 
 int RaspiServer::getDownPosFlag() const
 {
+    int delaytime = 200 * 1000;
+    usleep(delaytime);
     uint16_t addr_posflag = ADDR_POSITIONING_FLAG;
     uint16_t *p_posflag = &(mb_mapping->tab_registers[addr_posflag]);
     return *p_posflag;
@@ -429,6 +431,8 @@ int RaspiServer::getDownPosFlag() const
 
 int RaspiServer::getDownIdentifyFlag() const
 {
+    int delaytime = 200 * 1000;
+    usleep(delaytime);
     uint16_t addr_posflag = ADDR_IDENTIFYING_FLAG;
     uint16_t *p_posflag = &(mb_mapping->tab_registers[addr_posflag]);
     return *p_posflag;
@@ -436,6 +440,8 @@ int RaspiServer::getDownIdentifyFlag() const
 
 int RaspiServer::getUpPosFlag() const
 {
+    int delaytime = 200 * 1000;
+    usleep(delaytime);
     uint16_t addr_posflag = ADDR_FINISH_IDENTIFYING;
     uint16_t *p_posflag = &(mb_mapping->tab_registers[addr_posflag]);
     return *p_posflag;

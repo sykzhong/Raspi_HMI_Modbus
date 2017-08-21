@@ -1,5 +1,8 @@
 #include "Raspi.h"
 
+#define TEST2
+
+#ifdef TEST1
 int main()
 {
 	RaspiServer server = RaspiServer(TYPE_RTU);
@@ -43,3 +46,27 @@ int main()
 
 	return 0;
 }
+
+#elif defined TEST2
+
+int main()
+{
+	RaspiServer server = RaspiServer(TYPE_RTU);
+	// std::cout << "Begin" << std::endl;
+	server.Init();
+	// std::cout << "End" << std::endl;
+	// std::cout << "DownPosFlag = " << server.getDownPosFlag() << std::endl;
+	while(server.getDownPosFlag() != 1)	
+	{
+		std::cout << "DownPosFlag = " << server.getDownPosFlag() << std::endl;
+		std::cout << std::endl;
+		// sleep(1);
+	}
+	server.setCameraPos(10, 10, 10);
+	while(1)
+	{
+
+	}
+}
+
+#endif
