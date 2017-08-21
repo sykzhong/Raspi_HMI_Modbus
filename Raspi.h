@@ -26,6 +26,10 @@
 
 #include <iostream>
 
+#define TTY_PATH "/dev/tty" 
+#define STTY_US "stty raw -echo -F " 
+#define STTY_DEF "stty -raw echo -F "
+
 /* sykfix: need to change axis addr to x y z theta */
 /* Register of Raspi, saving current status of different parameters */
 #define ADDR_AXIS_X_POS          		0       // 4x FLOAT
@@ -119,6 +123,8 @@ public:
 	int getUpPosFlag	() const;				//Up data flag
 
 	int Init();
+
+	int setRealtimeCameraPos();
 
 	static void closeModbus (const int dummy);
 

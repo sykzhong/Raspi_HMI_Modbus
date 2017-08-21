@@ -27,7 +27,7 @@ axis_u_org      (0)
 {
     if(connection_type == TYPE_RTU)
 	{
-        printf("sykdebug:rtu type\n");
+        printf("sykdebug:rtu type\n\r");
 		if(initRTU() == 0)
         {
 			ret = pthread_create(&th, NULL, threadRTU, mb_mapping);
@@ -35,18 +35,18 @@ axis_u_org      (0)
 	}
 	else if(connection_type == TYPE_TCP)
 	{
-        printf("sykdebug:tcp type\n");
+        printf("sykdebug:tcp type\n\r");
 		if(initTCP() == 0)
 			ret = pthread_create(&th, NULL, threadTCP, mb_mapping);
 
 	}
 	if( ret != 0 )
 	{
-	    printf( "Create thread error!\n");
+	    printf( "Create thread error!\n\r");
 	    return;
 	}
     sleep(8);
-    printf("Construction function over\n");
+    printf("Construction function over\n\r");
 }
 
 RaspiServer::~RaspiServer()
@@ -57,14 +57,14 @@ RaspiServer::~RaspiServer()
 int RaspiServer::initRTU()
 {
 	
-    // printf("sykdebug: begin to create new rtu ctx\n");
+    // printf("sykdebug: begin to create new rtu ctx\n\r");
 	ctx = modbus_new_rtu("/dev/ttyUSB0", 38400, 'E', 8, 1);
     modbus_set_debug(ctx, FALSE);
     // modbus_set_debug(ctx, TRUE);
 	mb_mapping = modbus_mapping_new(MODBUS_MAX_READ_BITS, 0,
                                     MODBUS_MAX_READ_REGISTERS, 0);
 	if (mb_mapping == NULL) {
-        fprintf(stderr, "Failed to allocate the mapping: %s\n",
+        fprintf(stderr, "Failed to allocate the mapping: %s\n\r",
                 modbus_strerror(errno));
         modbus_free(ctx);
         return -1;
@@ -75,7 +75,7 @@ int RaspiServer::initRTU()
 	
 	if(modbus_connect(ctx) == -1)
     {
-        fprintf(stderr, "Coneection failed: %s\n", modbus_strerror(errno));
+        fprintf(stderr, "Coneection failed: %s\n\r", modbus_strerror(errno));
         modbus_free(ctx);
         return -1;
     }
@@ -96,7 +96,7 @@ int RaspiServer::initTCP()
     modbus_set_slave(ctx, RaspiServer::serverid);
 
     if (mb_mapping == NULL) {
-        fprintf(stderr, "Failed to allocate the mapping: %s\n",
+        fprintf(stderr, "Failed to allocate the mapping: %s\n\r",
                 modbus_strerror(errno));
         modbus_free(ctx);
         return -1;
@@ -105,7 +105,7 @@ int RaspiServer::initTCP()
     server_socket = modbus_tcp_listen(ctx, nb_connection);
     if (server_socket == -1)
     {
-        fprintf(stderr, "Unable to listen TCP connection\n");
+        fprintf(stderr, "Unable to listen TCP connection\n\r");
         modbus_free(ctx);
         return -1;
     }
@@ -134,7 +134,7 @@ void * RaspiServer::threadRTU(void *arg)
             //break;
         }
     }
-    printf("Quit the loop: %s\n", modbus_strerror(errno));
+    printf("Quit the loop: %s\n\r", modbus_strerror(errno));
 
     /* For RTU, skipped by TCP (no TCP connect) */
     modbus_close( ctx);
@@ -164,7 +164,7 @@ void * RaspiServer::threadTCP(void *arg)
     for(;;)
     {
     	rdset = refset;
-    	// printf("sykdebug: begin to wait socket\n");
+    	// printf("sykdebug: begin to wait socket\n\r");
     	/*sykfix: need to add write fdset. And noticed the select function is run by blocked*/
     	if(select(fdmax+1, &rdset, NULL, NULL, NULL) == -1)
     	{
@@ -205,7 +205,7 @@ void * RaspiServer::threadTCP(void *arg)
        					/*Keep track of the maximum of socket*/
        					fdmax = newfd;
        				}
-       				printf("New connection from %s:%d on socket %d\n",
+       				printf("New connection from %s:%d on socket %d\n\r",
        					inet_ntoa(clientaddr.sin_addr), clientaddr.sin_port, newfd);
        			}
     		}
@@ -221,7 +221,7 @@ void * RaspiServer::threadTCP(void *arg)
     			{
     				/* This example server in ended on connection closing or
                      * any errors. */
-                    printf("Connection closed on socket %d\n", master_socket);
+                    printf("Connection closed on socket %d\n\r", master_socket);
                     close(master_socket);
 
                     /* Remove from reference set */
@@ -282,14 +282,14 @@ int RaspiServer::getAxisCurPos(const int &axisnum, float &f_axispos) const
             axisname = 'Y';
             break;
         default:
-            printf("Error getAxisCurPos: axisnum input is wrong\n");
+            printf("Error getAxisCurPos: axisnum input is wrong\n\r");
             return -1;
     }
     p_axispos = &(mb_mapping->tab_registers[addr]);
     f_axispos = modbus_get_float(p_axispos);
-    // printf("sykdebug: get axis raw pos, addr = %d, rawpos = %f\n", addr, f_axispos);
+    // printf("sykdebug: get axis raw pos, addr = %d, rawpos = %f\n\r", addr, f_axispos);
     f_axispos = sign*(f_axispos - org);
-    // printf("sykdebug: get axis world pos, for axis %c, worldpos = %f\n", axisname, f_axispos);
+    // printf("sykdebug: get axis world pos, for axis %c, worldpos = %f\n\r", axisname, f_axispos);
     return 0;
 }
 
@@ -324,15 +324,15 @@ int RaspiServer::setAxisDstPos (const int &axisnum, const float &f_axisdstpos)
             axisname = 'Y';
             break;
         default:
-            printf("Error getAxisDstPos: axisnum input is wrong\n");
+            printf("Error getAxisDstPos: axisnum input is wrong\n\r");
             return -1;
     }
     p_axisdstpos = &(mb_mapping->tab_registers[addr]);
     float tmpdstpos;
     tmpdstpos = sign*f_axisdstpos + org;
     modbus_set_float(tmpdstpos, p_axisdstpos);
-    printf("sykdebug: set axis raw pos, addr = %d, rawpos = %f\n", addr, tmpdstpos);
-    // printf("sykdebug: set axis world pos, for axis %c, worldpos = %f\n", axisname, f_axisdstpos);
+    // printf("sykdebug: set axis raw pos, addr = %d, rawpos = %f\n\r", addr, tmpdstpos);
+    // printf("sykdebug: set axis world pos, for axis %c, worldpos = %f\n\r", axisname, f_axisdstpos);
     return 0;
 }
 
@@ -367,14 +367,14 @@ int RaspiServer::getAxisDstPos(const int &axisnum, float &f_axisdstpos) const
             axisname = 'Y';
             break;
         default:
-            printf("Error getAxisDstPos: axisnum input is wrong\n");
+            printf("Error getAxisDstPos: axisnum input is wrong\n\r");
             return -1;
     }
     p_axisdstpos = &(mb_mapping->tab_registers[addr]);
     f_axisdstpos = modbus_get_float(p_axisdstpos);
-    printf("sykdebug: get axis dst raw pos, addr = %d, rawpos = %f\n", addr, f_axisdstpos);
+    // printf("sykdebug: get axis dst raw pos, addr = %d, rawpos = %f\n\r", addr, f_axisdstpos);
     f_axisdstpos = sign*(f_axisdstpos - org);
-    printf("sykdebug: get axis dst world pos, for axis %c, worldpos = %f\n", axisname, f_axisdstpos);
+    // printf("sykdebug: get axis dst world pos, for axis %c, worldpos = %f\n\r", axisname, f_axisdstpos);
     return 0;
 }
 
@@ -394,18 +394,18 @@ int RaspiServer::enablePositioning()
 
     *p_enablepos = down;
     usleep(delaytime);
-    printf("sykdebug: *p_enablepos = %d\n", *p_enablepos);
+    printf("sykdebug: *p_enablepos = %d\n\r", *p_enablepos);
 
     *p_enablepos = up;
     usleep(delaytime);
-    printf("sykdebug: *p_enablepos = %d\n", *p_enablepos);
+    printf("sykdebug: *p_enablepos = %d\n\r", *p_enablepos);
 
     *p_enablepos = down;
 
     /* sykdebug: show the dst pos of axis */
     int axisnum = 0;
     float axisdstpos = 0;
-    printf("sykdebug: the dest pos of axis are: \n");
+    printf("sykdebug: the dest pos of axis are: \n\r");
     for(; axisnum < 4; axisnum++)
     {
         getAxisDstPos(axisnum, axisdstpos);
@@ -468,7 +468,7 @@ int RaspiServer::setCameraStatus(const int & rotateflag)
             *p_posflag = 1;
             break;
         default:
-            printf("Error setCameraPos: rotateflag is wrong\n");
+            printf("Error setCameraPStatus: rotateflag is wrong\n\r");
             return -1;
     }
     return 0;
@@ -486,7 +486,7 @@ int RaspiServer::setClawStatus(const int &clawindex, const int &clawflag)
             addr_clawposflag = ADDR_PRODUCT_CLAW_CONTROL;
             break;
         default:
-            printf("Error: clawindex is wrong\n");
+            printf("Error: clawindex is wrong\n\r");
             return -1;
     }
 
@@ -504,7 +504,7 @@ int RaspiServer::setClawStatus(const int &clawindex, const int &clawflag)
             *p_posflag = 2;
             break;
         default:
-            printf("Error setClawPos: clawflag is wrong\n");
+            printf("Error setClawPos: clawflag is wrong\n\r");
             return -1;
     }
     return 0;
@@ -522,7 +522,7 @@ int RaspiServer::getClawStatus(const int &clawindex) const
             addr_clawposflag = ADDR_PRODUCT_CLAW_STATUS;
             break;
         default:
-            printf("Error: clawindex is wrong\n");
+            printf("Error: clawindex is wrong\n\r");
             return -1;
     }
     uint16_t *p_posflag = &(mb_mapping->tab_registers[addr_clawposflag]);
@@ -571,7 +571,7 @@ int RaspiServer::getCameraPos(float &x, float &y, float &z) const
         printf("Still Positionning: ");
     else
         printf("Finish Positionning: ");
-    printf("X = %.2f, Y = %.2f, Z = %.2f\n", x, y, z);
+    printf("X = %.2f, Y = %.2f, Z = %.2f\n\r", x, y, z);
     return 0;
 }
 
@@ -582,3 +582,64 @@ int RaspiServer::getCameraDstPos(float &x, float &y, float &z) const
     getAxisDstPos(AXIS_Z, z);
     return 0;
 }
+
+int RaspiServer::setRealtimeCameraPos()
+{
+    uint16_t addr_enablepos = ADDR_ENABLE_POSITIONING;
+    uint16_t *p_enablepos = &(mb_mapping->tab_registers[addr_enablepos]);
+
+    const int down = 0;
+    const int up = 1;
+
+    *p_enablepos = down;
+    usleep(100*1000);
+
+    *p_enablepos = up;
+    usleep(100*1000);
+
+    float x, y, z;
+    getCameraPos(x, y, z);
+    char c = 0;
+
+    system(STTY_US TTY_PATH);
+    while(1)
+    {
+        c = getchar();
+        if(c == 27 || c == 3)
+            break;
+
+        switch(c)
+        {
+            case 'w':
+                y++;
+                break;
+            case 's':
+                y--;
+                break;
+            case 'a':
+                x--;
+                break;
+            case 'd':
+                x++;
+                break;
+            case 'q':
+                z--;
+                break;
+            case 'e':
+                z++;
+                break;
+            default:
+                printf("Wrong input\n\r");
+                break;
+        }
+        setAxisDstPos(AXIS_X, x);
+        setAxisDstPos(AXIS_Y, y);
+        setAxisDstPos(AXIS_Z, z);
+
+    }
+    *p_enablepos = down;
+    system(STTY_DEF TTY_PATH);
+    return 1;
+    
+}
+
