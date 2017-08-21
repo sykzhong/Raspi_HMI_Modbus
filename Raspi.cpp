@@ -390,6 +390,8 @@ int RaspiServer::enablePositioning()
     const uint16_t down = 0;
     const uint16_t up   = 1;
 
+    // sleep(1);
+
     *p_enablepos = down;
     usleep(delaytime);
     printf("sykdebug: *p_enablepos = %d\n", *p_enablepos);
@@ -398,7 +400,7 @@ int RaspiServer::enablePositioning()
     usleep(delaytime);
     printf("sykdebug: *p_enablepos = %d\n", *p_enablepos);
 
-    // *p_enablepos = down;
+    *p_enablepos = down;
 
     /* sykdebug: show the dst pos of axis */
     int axisnum = 0;

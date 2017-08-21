@@ -3,16 +3,19 @@
 int main()
 {
 	RaspiServer server = RaspiServer(TYPE_RTU);
-	// server.Init();
+	server.Init();
 
-	int axisnum   = AXIS_X;
-	float axispos = 1.0;
+	// server.setUpPosFlag(0);
+	// int axisnum   = AXIS_X;
+	// float axispos = 1.0;
 
-	/* Test write axis and enable them */
-	for(axisnum = AXIS_X, axispos = 1.0; axisnum <= AXIS_U; axisnum++, axispos++)
-		server.setAxisDstPos(axisnum, 40);
-	server.enablePositioning();
-
+	// /* Test write axis and enable them */
+	// for(axisnum = AXIS_X, axispos = 1.0; axisnum <= AXIS_Z; axisnum++, axispos++)
+	// 	server.setAxisDstPos(axisnum, 100);
+	// // sleep(2);
+	// server.enablePositioning();
+	// server.setUpPosFlag(1);
+	
 	/* Test read axis */
 	// for(axisnum = AXIS_X; axisnum <= AXIS_U; axisnum++)
 	// 	server.getAxisCurPos(axisnum, axispos);
@@ -30,8 +33,10 @@ int main()
 	// server.setCameraPos(x, y, z);
 	while(1)
 	{
+		std::cout << "UpPosFlag = " << server.getUpPosFlag() << std::endl;
 		std::cout << "DownPosFlag = " << server.getDownPosFlag() << std::endl;
 		std::cout << "DownIdentifyFlag = " << server.getDownIdentifyFlag() << std::endl;
+		std::cout << std::endl;
 		sleep(1);
 		// TODO
 	}
